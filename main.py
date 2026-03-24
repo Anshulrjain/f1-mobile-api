@@ -1,17 +1,23 @@
+import os
 from fastapi import FastAPI
 import fastf1
-import pandas as pd
-import os # <-- Added for Render port detection
+import uvicorn
 
 app = FastAPI()
 
-# Enable caching
-fastf1.Cache.enable_cache('cache') 
+# FIX: Create the cache directory if it doesn't exist
+CACHE_DIR = 'cache'
+if not os.path.exists(CACHE_DIR):
+    os.makedirs(CACHE_DIR)
 
-# 1. Health Check (Very helpful to see if Render is awake)
+# Enable caching using the folder we just checked/created
+fastf1.Cache.enable_cache(CACHE_DIR) 
+
 @app.get("/")
 def home():
     return {"status": "F1 API is Online", "message": "Ready for telemetry requests"}
+
+# ... rest of your code ...
 
 @app.get("/race-data")
 def get_race_telemetry(year: int, location: str, session_type: str, driver: str):
