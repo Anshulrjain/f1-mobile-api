@@ -20,30 +20,32 @@ def get_race_telemetry(year: int, location: str, session_type: str, driver: str)
     try:
         session = fastf1.get_session(year, location, session_type)
         
-        # KEY CHANGE: Do NOT load the whole session first.
-        # Just load the laps. This is much lighter on RAM.
-        session.load(laps=True, telemetry=False, weather=False, messages=False)
+        # 1. We load LAPS (very light) and TELEMETRY (but we filter it later)
+        # We MUST keep telemetry=True here, but we set weather/messages to False
+        session.load(laps=True, telemetry=True, weather=False, messages=False)
 
-        # Pick only the driver we need
-        driver_laps = session.laps.pick_drivers(driver)
-        if driver_laps.empty:
-            return {"error": f"No data for {driver}"}
+        # 2. Pick only the driver we want
+        laps = session.laps.pick_drivers(driver)
+        if laps.empty:
+            return {"error": f"No data for driver {driver}"}
 
-        fastest_lap = driver_laps.pick_fastest()
+        # 3. Get the fastest lap
+        fastest_lap = laps.pick_fastest()
         
-        # ONLY load telemetry for this one specific lap
+        # 4. Extract the telemetry for just this lap
         telemetry = fastest_lap.get_telemetry()
 
-        # Slim down the data even more for the mobile app
-        # We only need X, Y, and Speed. Time is converted to float.
+        # 5. Clean and slim the data for Kotlin
         data = telemetry[['X', 'Y', 'Speed', 'Time']].copy()
-        data['Time'] = data['Time'].dt.total_seconds()
+        data['Time'] = data['Time'].dt.total_seconds() 
         
         return {
             "driver": driver,
+            "session": f"{year} {location}",
             "data": data.to_dict(orient="records")
         }
     except Exception as e:
+        # This will help us see exactly what went wrong in the browser
         return {"error": str(e)}
 
 if __name__ == "__main__":
