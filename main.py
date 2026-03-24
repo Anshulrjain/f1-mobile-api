@@ -23,12 +23,21 @@ def home():
 def get_race_telemetry(year: int, location: str, session_type: str, driver: str):
     try:
         session = fastf1.get_session(year, location, session_type)
-        session.load()
+        
+        # We only load LAPS and TELEMETRY. 
+        # Crucial: weather=False and messages=False saves a lot of RAM.
+        session.load(laps=True, telemetry=True, weather=False, messages=False)
 
-        laps = session.laps.pick_driver(driver)
+        # Updated to the new suggested method
+        laps = session.laps.pick_drivers(driver) 
+        
+        if laps.empty:
+            return {"error": f"No data for driver {driver}"}
+
         fastest_lap = laps.pick_fastest()
         telemetry = fastest_lap.get_telemetry()
 
+        # Just the essentials for the Kotlin Canvas
         data = telemetry[['X', 'Y', 'Speed', 'Time']].copy()
         data['Time'] = data['Time'].dt.total_seconds() 
         
